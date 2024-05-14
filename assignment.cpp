@@ -1,98 +1,77 @@
-// Wavelabs’ Lab setup consists of n workstations numbered from 0 to n - 1 connected by ethernet
-// cable connections forming a network where connections[i] = [ai, bi] represents a connection
-// between workstations ai and bi. Any workstation can reach any other workstation directly or
-// indirectly through the network.
-// As a Network Engineer, you are given initial computer network connections. You can extract
-// certain cables between two directly connected workstations, and place them between any pair of
-// disconnected workstations to make them directly connected.
-// Return the minimum number of times you need to do this in order to make all the workstations
-// connected. If it is not possible, return -1
+Wavelabs’ Lab setup consists of a network of n nodes, labeled from 1 to n.As a Network
+Engineer, you are given times, a list of travel times as directed edges times[i] = (ui, vi, wi), where
+ui is the source node, vi is the target node, and wi is the time it takes for a signal to travel from
+source to target.
+We will send a signal from a given node k. Return the minimum time it takes for all the n nodes
+to receive the signal. If it is impossible for all the n nodes to receive the signal, return -1.
 
 #include <bits/stdc++.h>
 using namespace std;
 
-//In order to solve this question we will first find out the number of 
-//extra-edges and then we will find out the number of components of the graph.
-// We will be using the Disjoint Set data structure to do so.
-
-class DisjointSet {
-public:
-    vector<int> rank, parent, size;
-
-    DisjointSet(int n) {
-        rank.resize(n + 1, 0);
-        parent.resize(n + 1);
-        size.resize(n + 1);
-        for (int i = 0; i <= n; i++) {
-            parent[i] = i;
-            size[i] = 1;
-        }
-    }
-
-    int findUPar(int node) {
-        if (node == parent[node])
-            return node;
-        return parent[node] = findUPar(parent[node]);
-    }
-
-    void unionByRank(int u, int v) {
-        int ulp_u = findUPar(u);
-        int ulp_v = findUPar(v);
-        if (ulp_u == ulp_v) return;
-        if (rank[ulp_u] < rank[ulp_v]) {
-            parent[ulp_u] = ulp_v;
-        }
-        else if (rank[ulp_v] < rank[ulp_u]) {
-            parent[ulp_v] = ulp_u;
-        }
-        else {
-            parent[ulp_v] = ulp_u;
-            rank[ulp_u]++;
-        }
-    }
-
+int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+     
+    unordered_map<int,vector<pair<int,int>>>adj;
     
-};
-class Solution {
-public:
-    int Solve(int n, vector<vector<int>>& connections) {
-        DisjointSet ds(n);
-        int extraConnection = 0;
-        for (auto it : connections) {
-            int u = it[0];
-            int v = it[1];
-
-            // if the ultimate workstation parent is same
-            if (ds.findUPar(u) == ds.findUPar(v)) {
-                extraConnection++; // counting the extraedge
-            }
-            else { // if the workstation parent is differnet
-
-                ds.unionByRank(u, v);  
-            }
-        }
-        int disConnectedWorkStation = 0;
-
-        //Total disconnected work sation
-        for (int i = 0; i < n; i++) {
-            if (ds.parent[i] == i) disConnectedWorkStation++;
-        }
-        int ans = disConnectedWorkStation - 1;
-
-        //if the count of the extra connection is greater then we will return the answer
-        if (extraConnection >= ans) return ans;
-
-        return -1;
+    //edge is directed
+    for(auto& edge : times) {
+        adj[edge[0]].push_back({edge[1], edge[2]});
     }
-};
 
-int main() {
+    // Initializing distances with infinity
+    //but not soucrce node
+    
+    vector<int> distances(n + 1, INT_MAX);
+    distances[k] = 0;
 
-    int V = 9;
-    vector<vector<int>> connections = {{0, 1}, {0, 2}, {0, 3}, {1, 2}, {2, 3}, {4, 5}, {5, 6}, {7, 8}};
+    // Priority queue to store nodes with their tentative distances
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+    pq.push({0, k});
 
-    Solution obj;
-    int ans = obj.Solve(V, connections);
-    cout << "The number of operations needed: " << ans << endl;
+    while(!pq.empty()) 
+    {
+        auto it = pq.top();
+        
+        int distance=it.first;
+        int node=it.second;
+        
+        pq.pop();
+        
+        if (distance > distances[node]) {
+            continue;
+        }
+        for (const auto& [ngbr, wght] : adj[node]) 
+        {
+            int new_distance = distance + wght;
+            
+            if (new_distance < distances[ngbr]) 
+            {
+                distances[ngbr] = new_distance;
+                
+                pq.push({new_distance, ngbr});
+                
+            }
+        }
+    }
+
+    //Checking that  whether  all nodes is reciving singnal
+    int max_distance=INT_MIN;
+    for (int i=1;i<=n;++i) 
+    {
+        if (distances[i]==INT_MAX) {
+            return -1; // Not all nodes are reachable
+        }
+        max_distance = max(max_distance,distances[i]);
+    }
+    return max_distance;
+}
+
+int main() 
+{
+    vector<vector<int>>times={{2,1,1},{2,3,1},{3,4,1}};
+    int n = 4;
+    int k = 2;
+    
+    cout << networkDelayTime(times, n, k) << endl;
+    
     return 0;
 }
